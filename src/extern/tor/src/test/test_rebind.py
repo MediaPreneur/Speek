@@ -20,15 +20,14 @@ def fail(msg):
     sys.exit(msg)
 
 def skip(msg):
-    logging.warning('SKIP: {}'.format(msg))
+    logging.warning(f'SKIP: {msg}')
     sys.exit(77)
 
 def try_connecting_to_socksport():
     socks_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    e = socks_socket.connect_ex(('127.0.0.1', socks_port))
-    if e:
+    if e := socks_socket.connect_ex(('127.0.0.1', socks_port)):
         tor_process.terminate()
-        fail('Cannot connect to SOCKSPort: error ' + os.strerror(e))
+        fail(f'Cannot connect to SOCKSPort: error {os.strerror(e)}')
     socks_socket.close()
 
 def wait_for_log(s):
@@ -37,22 +36,22 @@ def wait_for_log(s):
         l = tor_process.stdout.readline()
         l = l.decode('utf8', 'backslashreplace')
         if s in l:
-            logging.info('Tor logged: "{}"'.format(l.strip()))
+            logging.info(f'Tor logged: "{l.strip()}"')
             return
         # readline() returns a blank string when there is no output
         # avoid busy-waiting
         if len(l) == 0:
-            logging.debug('Tor has not logged anything, waiting for "{}"'.format(s))
+            logging.debug(f'Tor has not logged anything, waiting for "{s}"')
             time.sleep(LOG_WAIT)
         else:
-            logging.info('Tor logged: "{}", waiting for "{}"'.format(l.strip(), s))
-    fail('Could not find "{}" in logs after {} seconds'.format(s, LOG_TIMEOUT))
+            logging.info(f'Tor logged: "{l.strip()}", waiting for "{s}"')
+    fail(f'Could not find "{s}" in logs after {LOG_TIMEOUT} seconds')
 
 def pick_random_port():
     port = 0
     random.seed()
 
-    for i in range(8):
+    for _ in range(8):
         port = random.randint(10000, 60000)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if s.connect_ex(('127.0.0.1', port)) == 0:
@@ -85,12 +84,12 @@ assert control_port != 0
 assert socks_port != 0
 
 if len(sys.argv) < 3:
-     fail('Usage: %s <path-to-tor> <data-dir>' % sys.argv[0])
+    fail(f'Usage: {sys.argv[0]} <path-to-tor> <data-dir>')
 
 if not os.path.exists(sys.argv[1]):
-    fail('ERROR: cannot find tor at %s' % sys.argv[1])
+    fail(f'ERROR: cannot find tor at {sys.argv[1]}')
 if not os.path.exists(sys.argv[2]):
-    fail('ERROR: cannot find datadir at %s' % sys.argv[2])
+    fail(f'ERROR: cannot find datadir at {sys.argv[2]}')
 
 tor_path = sys.argv[1]
 data_dir = sys.argv[2]
@@ -100,20 +99,32 @@ open(empty_torrc_path, 'w').close()
 empty_defaults_torrc_path = os.path.join(data_dir, 'empty_defaults_torrc')
 open(empty_defaults_torrc_path, 'w').close()
 
-tor_process = subprocess.Popen([tor_path,
-                               '-DataDirectory', data_dir,
-                               '-ControlPort', '127.0.0.1:{}'.format(control_port),
-                               '-SOCKSPort', '127.0.0.1:{}'.format(socks_port),
-                               '-Log', 'debug stdout',
-                               '-LogTimeGranularity', '1',
-                               '-FetchServerDescriptors', '0',
-                               '-f', empty_torrc_path,
-                               '--defaults-torrc', empty_defaults_torrc_path,
-                               ],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+tor_process = subprocess.Popen(
+    [
+        tor_path,
+        '-DataDirectory',
+        data_dir,
+        '-ControlPort',
+        f'127.0.0.1:{control_port}',
+        '-SOCKSPort',
+        f'127.0.0.1:{socks_port}',
+        '-Log',
+        'debug stdout',
+        '-LogTimeGranularity',
+        '1',
+        '-FetchServerDescriptors',
+        '0',
+        '-f',
+        empty_torrc_path,
+        '--defaults-torrc',
+        empty_defaults_torrc_path,
+    ],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+)
 
-if tor_process == None:
+
+if tor_process is None:
     fail('ERROR: running tor failed')
 
 wait_for_log('Opened Control listener')

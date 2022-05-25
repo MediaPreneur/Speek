@@ -62,10 +62,7 @@ ALLOWED_PATTERNS = [
 TOPDIR = "src"
 
 def pattern_is_normal(s):
-    for p in ALLOWED_PATTERNS:
-        if p.match(s):
-            return True
-    return False
+    return any(p.match(s) for p in ALLOWED_PATTERNS)
 
 class Error(object):
     def __init__(self, location, msg, is_advisory=False):
@@ -74,16 +71,13 @@ class Error(object):
         self.is_advisory = is_advisory
 
     def __str__(self):
-        return "{} at {}".format(self.msg, self.location)
+        return f"{self.msg} at {self.location}"
 
 class Rules(object):
     """ A 'Rules' object is the parsed version of a .may_include file. """
     def __init__(self, dirpath):
         self.dirpath = dirpath
-        if dirpath.startswith("src/"):
-            self.incpath = dirpath[4:]
-        else:
-            self.incpath = dirpath
+        self.incpath = dirpath[4:] if dirpath.startswith("src/") else dirpath
         self.patterns = []
         self.usedPatterns = set()
         self.is_advisory = False
@@ -93,7 +87,7 @@ class Rules(object):
             self.is_advisory = True
             return
         if not pattern_is_normal(pattern):
-            warn("Unusual pattern {} in {}".format(pattern, self.dirpath))
+            warn(f"Unusual pattern {pattern} in {self.dirpath}")
         self.patterns.append(pattern)
 
     def includeOk(self, path):
@@ -104,36 +98,32 @@ class Rules(object):
         return False
 
     def applyToLines(self, lines, loc_prefix=""):
-        lineno = 0
-        for line in lines:
-            lineno += 1
-            m = INCLUDE_PATTERN.match(line)
-            if m:
+        for lineno, line in enumerate(lines, start=1):
+            if m := INCLUDE_PATTERN.match(line):
                 include = m.group(1)
                 if not self.includeOk(include):
-                    yield Error("{}{}".format(loc_prefix,str(lineno)),
-                                "Forbidden include of {}".format(include),
-                                is_advisory=self.is_advisory)
+                    yield Error(
+                        f"{loc_prefix}{str(lineno)}",
+                        f"Forbidden include of {include}",
+                        is_advisory=self.is_advisory,
+                    )
 
     def applyToFile(self, fname, f):
-        for error in self.applyToLines(iter(f), "{}:".format(fname)):
-            yield error
+        yield from self.applyToLines(iter(f), f"{fname}:")
 
     def noteUnusedRules(self):
         for p in self.patterns:
             if p not in self.usedPatterns:
-                warn("Pattern {} in {} was never used.".format(p, self.dirpath))
+                warn(f"Pattern {p} in {self.dirpath} was never used.")
 
     def getAllowedDirectories(self):
         allowed = []
         for p in self.patterns:
-            m = re.match(r'^(.*)/\*\.(h|inc)$', p)
-            if m:
-                allowed.append(m.group(1))
+            if m := re.match(r'^(.*)/\*\.(h|inc)$', p):
+                allowed.append(m[1])
                 continue
-            m = re.match(r'^(.*)/[^/]*$', p)
-            if m:
-                allowed.append(m.group(1))
+            if m := re.match(r'^(.*)/[^/]*$', p):
+                allowed.append(m[1])
                 continue
 
         return allowed
@@ -156,7 +146,7 @@ def normalize_srcdir(fname):
         if dirpart == 'src' or dirname == "":
             #print(orig,"=>",result)
             return result
-        result = "{}/{}".format(dirpart,result)
+        result = f"{dirpart}/{result}"
 
     print("No progress!")
     assert False
@@ -261,9 +251,7 @@ def consider_include_rules(fname, f):
     if rules is None:
         return
 
-    for err in rules.applyToFile(fname, f):
-        yield err
-
+    yield from rules.applyToFile(fname, f)
     list_unused = False
     log_sorted_levels = False
 
@@ -276,14 +264,10 @@ def walk_c_files(topdir="src"):
             if fname_is_c(fname):
                 fullpath = os.path.join(dirpath,fname)
                 with open(fullpath) as f:
-                    for err in consider_include_rules(fullpath, f):
-                        yield err
+                    yield from consider_include_rules(fullpath, f)
 
 def open_or_stdin(fname):
-    if fname == '-':
-        return sys.stdin
-    else:
-        return open(fname)
+    return sys.stdin if fname == '-' else open(fname)
 
 def check_subsys_file(fname, uses_dirs):
     if not uses_dirs:
@@ -304,7 +288,7 @@ def check_subsys_file(fname, uses_dirs):
             fname = normalize_srcdir(fname)
             for prev in previous_subsystems:
                 if fname in uses_closure[prev]:
-                    print("INVERSION: {} uses {}".format(prev,fname))
+                    print(f"INVERSION: {prev} uses {fname}")
                     ok = False
             previous_subsystems.append(fname)
     return not ok
@@ -330,15 +314,17 @@ def run_check_includes(topdir, list_unused=False, log_sorted_levels=False,
         for rules in get_all_include_rules():
             rules.noteUnusedRules()
 
-    uses_dirs = { }
-    for rules in get_all_include_rules():
-        uses_dirs[rules.incpath] = rules.getAllowedDirectories()
+    uses_dirs = {
+        rules.incpath: rules.getAllowedDirectories()
+        for rules in get_all_include_rules()
+    }
 
     remove_self_edges(uses_dirs)
 
-    if check_subsystem_order:
-        if check_subsys_file(check_subsystem_order, uses_dirs):
-            sys.exit(1)
+    if check_subsystem_order and check_subsys_file(
+        check_subsystem_order, uses_dirs
+    ):
+        sys.exit(1)
 
     all_levels = toposort(uses_dirs)
 

@@ -10,7 +10,13 @@ platform = os.environ['PLATFORM']
 path = os.environ['PATH']
 image = os.environ['APPVEYOR_BUILD_WORKER_IMAGE']
 jobid = os.environ['APPVEYOR_JOB_ID']
-cmake_command = ['cmake', '-DFMT_PEDANTIC=ON', '-DCMAKE_BUILD_TYPE=' + config, '..']
+cmake_command = [
+    'cmake',
+    '-DFMT_PEDANTIC=ON',
+    f'-DCMAKE_BUILD_TYPE={config}',
+    '..',
+]
+
 if build == 'mingw':
     cmake_command.append('-GMinGW Makefiles')
     build_command = ['mingw32-make', '-j4']
@@ -34,7 +40,7 @@ else:
             generator = 'Visual Studio 15 2017'
         if platform == 'x64':
             generator += ' Win64'
-    cmake_command.append('-G' + generator)
+    cmake_command.append(f'-G{generator}')
     build_command = ['cmake', '--build', '.', '--config', config, '--', '/m:4']
     test_command = ['ctest', '-C', config]
 

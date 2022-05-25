@@ -160,9 +160,7 @@ def notify():
     failure = sys.argv[3] == "failure"
 
     if success or failure:
-        messages = []
-        messages.append(u"{branch_detail} - {repo_commit_author}: {repo_commit_message}")
-
+        messages = ["{branch_detail} - {repo_commit_author}: {repo_commit_message}"]
         if success:
             messages.append(u"Build #{build_version} passed. Details: {build_url}")
         if failure:
@@ -188,7 +186,7 @@ def notify():
     # establish connection
     irc_sock = ssl.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
     irc_sock.connect((socket.gethostbyname(server), int(port)))
-    irc_sock.send('NICK {0}\r\nUSER {0} * 0 :{0}\r\n'.format(irc_username).encode())
+    irc_sock.send('NICK {0}\r\nUSER {0} * 0 :{0}\r\n'.format(irc_nick).encode())
     irc_sock.send('JOIN #{0}\r\n'.format(channel).encode())
     irc_file = irc_sock.makefile()
 
@@ -207,7 +205,7 @@ def notify():
             time.sleep(5)
             # send notification
             for msg in messages:
-                print(u'PRIVMSG #{} :{}'.format(channel, msg).encode("utf-8"))
+                print(f'PRIVMSG #{channel} :{msg}'.encode("utf-8"))
                 irc_sock.send(u'PRIVMSG #{} :{}\r\n'.format(channel, msg).encode("utf-8"))
             time.sleep(5)
             return

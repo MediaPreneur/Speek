@@ -44,7 +44,7 @@ def socks5ResolveRequest(hostname, atype=0x03, command=0xF0):
     if atype == 0x03:
         reqheader += struct.pack("!B", len(hostname))
     portstr = struct.pack("!H",port)
-    return "%s%s%s"%(reqheader,hostname,portstr)
+    return f"{reqheader}{hostname}{portstr}"
 
 def socks5ParseResponse(r):
     if len(r)<8:
@@ -66,7 +66,7 @@ def socks5ParseResponse(r):
             return "%d.%d.%d.%d"%tuple(map(ord,addr))
         else:
             # not really the right way to format IPv6
-            return "IPv6: %s"%(":".join([hex(ord(c)) for c in addr]))
+            return f'IPv6: {":".join([hex(ord(c)) for c in addr])}'
     else:
         hlen, = struct.unpack("!B", r[4])
         expected_len = 5 + hlen + 2
@@ -124,8 +124,7 @@ def resolve(hostname, sockshost, socksport, socksver=4, reverse=0):
         answer += more
         result = parse(answer)
     print("Got answer",result)
-    m = s.recv(1)
-    if m:
+    if m := s.recv(1):
         print("Got extra data too: %r"%m)
     return result
 

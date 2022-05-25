@@ -99,7 +99,7 @@ class Rewriter:
         """
         self._patterns = []
         for id1, id2 in replacements:
-            pat = re.compile(r"\b{}\b".format(re.escape(id1)))
+            pat = re.compile(f"\\b{re.escape(id1)}\\b")
             self._patterns.append((pat, id2))
 
         self._count = 0
@@ -134,7 +134,7 @@ def make_commit_msg(pairs, no_verify):
     for id1, id2 in pairs:
         qid1 = shlex.quote(id1)
         qid2 = shlex.quote(id2)
-        script.append("        {} {}".format(qid1, qid2))
+        script.append(f"        {qid1} {qid2}")
     script = " \\\n".join(script)
 
     if len(pairs) == 1:
@@ -243,21 +243,19 @@ def main(argv):
         print("Uncommitted changes found. Not running.", file=sys.stderr)
         return 1
 
-    pairs = []
-    print("renaming {} to {}".format(args.from_id, args.to_id), file=sys.stderr)
-    pairs.append((args.from_id, args.to_id))
+    print(f"renaming {args.from_id} to {args.to_id}", file=sys.stderr)
+    pairs = [(args.from_id, args.to_id)]
     for idx in range(0, len(args.more), 2):
         id1 = args.more[idx]
         id2 = args.more[idx+1]
-        print("renaming {} to {}".format(id1, id2))
+        print(f"renaming {id1} to {id2}")
         pairs.append((id1, id2))
 
     rewriter = Rewriter(pairs)
 
     rewrite_files(list_c_files(), rewriter)
 
-    print("Replaced {} identifiers".format(rewriter.get_count()),
-          file=sys.stderr)
+    print(f"Replaced {rewriter.get_count()} identifiers", file=sys.stderr)
 
     if args.commit:
         commit(pairs, args.no_verify)

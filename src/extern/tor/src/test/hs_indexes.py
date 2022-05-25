@@ -50,7 +50,7 @@ data = struct.pack('!8s32s32sQQ', PREFIX, IDENTITY, SRV, PERIOD_NUM,
                                   PERIOD_LEN)
 hsdir_index = hashlib.sha3_256(data).hexdigest()
 
-print("[hs_build_hsdir_index] %s" % (hsdir_index))
+print(f"[hs_build_hsdir_index] {hsdir_index}")
 
 # The second index we'll build is where the HS stores and the client fetches
 # the descriptor on the hashring. It is constructed by the hs_build_hs_index()
@@ -72,4 +72,4 @@ data = struct.pack('!12s32sQQQ', PREFIX, PUBKEY, REPLICA_NUM, PERIOD_LEN,
                                    PERIOD_NUM)
 hs_index = hashlib.sha3_256(data).hexdigest()
 
-print("[hs_build_hs_index]   %s" % (hs_index))
+print(f"[hs_build_hs_index]   {hs_index}")

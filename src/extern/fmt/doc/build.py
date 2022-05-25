@@ -10,13 +10,12 @@ versions = ['1.0.0', '1.1.0', '2.0.0', '3.0.2', '4.0.0', '4.1.0', '5.0.0', '5.1.
 
 def pip_install(package, commit=None, **kwargs):
   "Install package using pip."
-  min_version = kwargs.get('min_version')
-  if min_version:
+  if min_version := kwargs.get('min_version'):
     from pkg_resources import get_distribution, DistributionNotFound
     try:
       installed_version = get_distribution(os.path.basename(package)).version
       if LooseVersion(installed_version) >= min_version:
-        print('{} {} already installed'.format(package, min_version))
+        print(f'{package} {min_version} already installed')
         return
     except DistributionNotFound:
       pass
@@ -101,11 +100,18 @@ def build_docs(version='dev', **kwargs):
     raise CalledProcessError(p.returncode, cmd)
   html_dir = os.path.join(work_dir, 'html')
   main_versions = reversed(versions[-3:])
-  check_call(['sphinx-build',
-              '-Dbreathe_projects.format=' + os.path.abspath(doxyxml_dir),
-              '-Dversion=' + version, '-Drelease=' + version,
-              '-Aversion=' + version, '-Aversions=' + ','.join(main_versions),
-              '-b', 'html', doc_dir, html_dir])
+  check_call([
+      'sphinx-build',
+      f'-Dbreathe_projects.format={os.path.abspath(doxyxml_dir)}',
+      f'-Dversion={version}',
+      f'-Drelease={version}',
+      f'-Aversion={version}',
+      '-Aversions=' + ','.join(main_versions),
+      '-b',
+      'html',
+      doc_dir,
+      html_dir,
+  ])
   try:
     check_call(['lessc', '--clean-css',
                 '--include-path=' + os.path.join(doc_dir, 'bootstrap'),

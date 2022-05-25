@@ -135,7 +135,7 @@ def intro2_ntor_client(intro_auth_pubkey_str, intro_enc_pubkey,
     kdf.update(secret + T_HSENC + info)
     key_material = shake_squeeze(kdf, 64*8)
 
-    enc_key = key_material[0:32]
+    enc_key = key_material[:32]
     mac_key = key_material[32:64]
 
     return enc_key, mac_key
@@ -167,7 +167,7 @@ def intro2_ntor_service(intro_auth_pubkey_str, client_enc_pubkey, service_enc_pr
     kdf.update(secret + T_HSENC + info)
     key_material = shake_squeeze(kdf, 64*8)
 
-    enc_key = key_material[0:32]
+    enc_key = key_material[:32]
     mac_key = key_material[32:64]
 
     return enc_key, mac_key
@@ -304,7 +304,7 @@ def do_pure_python_ntor_test():
     assert(client_ntor_key_seed == service_ntor_key_seed)
     assert(client_auth_input_mac == service_auth_input_mac)
 
-    print("DONE: python dance [%s]" % repr(client_auth_input_mac))
+    print(f"DONE: python dance [{repr(client_auth_input_mac)}]")
 
 # Perform a pure little-t-tor integration test.
 def do_little_t_tor_ntor_test():
@@ -344,7 +344,7 @@ def do_little_t_tor_ntor_test():
     assert(client_ntor_key_seed == service_ntor_key_seed)
     assert(client_ntor_auth_mac == service_ntor_auth_mac)
 
-    print("DONE: tor dance [%s]" % repr(client_ntor_auth_mac))
+    print(f"DONE: tor dance [{repr(client_ntor_auth_mac)}]")
 
 """
 Do mixed test as follows:
@@ -389,7 +389,7 @@ def do_first_mixed_test():
     assert(client_auth_input_mac == service_ntor_auth_mac)
     assert(client_ntor_key_seed == service_ntor_key_seed)
 
-    print("DONE: 1st mixed dance [%s]" % repr(client_auth_input_mac))
+    print(f"DONE: 1st mixed dance [{repr(client_auth_input_mac)}]")
 
 """
 Do mixed test as follows:
@@ -423,7 +423,7 @@ def do_second_mixed_test():
     assert(client_ntor_key_seed == service_ntor_key_seed)
     assert(client_ntor_auth_mac == service_ntor_auth_mac)
 
-    print("DONE: 2nd mixed dance [%s]" % repr(client_ntor_auth_mac))
+    print(f"DONE: 2nd mixed dance [{repr(client_ntor_auth_mac)}]")
 
 def do_mixed_tests():
     do_first_mixed_test()

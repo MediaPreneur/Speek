@@ -24,7 +24,7 @@ def warn(msg):
     """
     Print an warning message.
     """
-    print("WARNING: {}".format(msg), file=sys.stderr)
+    print(f"WARNING: {msg}", file=sys.stderr)
 
 def find_version(infile):
     """
@@ -32,9 +32,8 @@ def find_version(infile):
     configure.ac file, find the current version line.
     """
     for line in infile:
-        m = re.search(r'AC_INIT\(\[tor\],\s*\[([^\]]*)\]\)', line)
-        if m:
-            return m.group(1)
+        if m := re.search(r'AC_INIT\(\[tor\],\s*\[([^\]]*)\]\)', line):
+            return m[1]
 
     return None
 
@@ -50,14 +49,10 @@ def update_version_in(infile, outfile, regex, versionline):
     found = False
     have_changed = False
     for line in infile:
-        m = regex.match(line)
-        if m:
+        if m := regex.match(line):
             found = True
             oldline = line
-            if type(versionline) == type(u""):
-                line = versionline
-            else:
-                line = versionline(m)
+            line = versionline if type(versionline) == type(u"") else versionline(m)
             if not line.endswith("\n"):
                 line += "\n"
             if oldline != line:
@@ -65,7 +60,7 @@ def update_version_in(infile, outfile, regex, versionline):
         outfile.write(line)
 
     if not found:
-        warn("didn't find any version line to replace in {}".format(infile.name))
+        warn(f"didn't find any version line to replace in {infile.name}")
 
     return have_changed
 
@@ -75,11 +70,11 @@ def replace_on_change(fname, change):
     delete fname.tmp.  Log what we're doing to stderr.
     """
     if not change:
-        print("No change in {}".format(fname))
-        os.unlink(fname+".tmp")
+        print(f"No change in {fname}")
+        os.unlink(f"{fname}.tmp")
     else:
-        print("Updating {}".format(fname))
-        os.rename(fname+".tmp", fname)
+        print(f"Updating {fname}")
+        os.rename(f"{fname}.tmp", fname)
 
 
 def update_file(fname,
@@ -91,8 +86,7 @@ def update_file(fname,
     Do not modify 'fname' if there are no changes made.  Use the
     provided encoding to read and write.
     """
-    with io.open(fname, "r", encoding=encoding) as f, \
-         io.open(fname+".tmp", "w", encoding=encoding) as outf:
+    with io.open(fname, "r", encoding=encoding) as f, io.open(f"{fname}.tmp", "w", encoding=encoding) as outf:
         have_changed = update_version_in(f, outf, regex, versionline)
 
     replace_on_change(fname, have_changed)
@@ -102,11 +96,11 @@ with open(P("configure.ac")) as f:
     version = find_version(f)
 
 # If we have no version, we can't proceed.
-if version == None:
+if version is None:
     print("No version found in configure.ac", file=sys.stderr())
     sys.exit(1)
 
-print("The version is {}".format(version))
+print(f"The version is {version}")
 
 today = time.strftime("%Y-%m-%d", time.gmtime())
 
@@ -116,7 +110,7 @@ today = time.strftime("%Y-%m-%d", time.gmtime())
 def replace_fn(m):
     if m.group(1) != version:
         # The version changed -- we change the date.
-        return u'AC_DEFINE(APPROX_RELEASE_DATE, ["{}"], # for {}'.format(today, version)
+        return f'AC_DEFINE(APPROX_RELEASE_DATE, ["{today}"], # for {version}'
     else:
         # No changes.
         return m.group(0)
@@ -125,12 +119,17 @@ update_file(P("configure.ac"),
             replace_fn)
 
 # In tor-mingw.nsi.in, we replace the definition of VERSION.
-update_file(P("contrib/win32build/tor-mingw.nsi.in"),
-            re.compile(r'!define VERSION .*'),
-            u'!define VERSION "{}"'.format(version),
-            encoding="iso-8859-1")
+update_file(
+    P("contrib/win32build/tor-mingw.nsi.in"),
+    re.compile(r'!define VERSION .*'),
+    f'!define VERSION "{version}"',
+    encoding="iso-8859-1",
+)
+
 
 # In src/win32/orconfig.h, we replace the definition of VERSION.
-update_file(P("src/win32/orconfig.h"),
-            re.compile(r'#define VERSION .*'),
-            u'#define VERSION "{}"'.format(version))
+update_file(
+    P("src/win32/orconfig.h"),
+    re.compile(r'#define VERSION .*'),
+    f'#define VERSION "{version}"',
+)

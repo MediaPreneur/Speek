@@ -55,10 +55,10 @@ def radix255(x):
   return result
 
 Bi = B
-for i in range(32):
+for _ in range(32):
   print("{")
   Bij = Bi
-  for j in range(8):
+  for _ in range(8):
     print(" {")
     print("  {",radix255(Bij[1]+Bij[0]),"},")
     print("  {",radix255(Bij[1]-Bij[0]),"},")
@@ -66,5 +66,5 @@ for i in range(32):
     Bij = edwards(Bij,Bi)
     print(" },")
   print("},")
-  for k in range(8):
+  for _ in range(8):
     Bi = edwards(Bi,Bi)

@@ -46,13 +46,12 @@ for I in range(len(LINES)):
 print("BAD")
 
 for l in LINES:
-    print("{}".format(l), end="")
+    print(f"{l}", end="")
 
 if (sys.platform.startswith('freebsd') or sys.platform.startswith('netbsd') or
     sys.platform.startswith('openbsd') or sys.platform.startswith('darwin')):
     # See bug #17808 if you know how to fix backtraces on BSD-derived systems
-    print("Test failed; but {} is known to have backtrace problems."
-          .format(sys.platform))
+    print(f"Test failed; but {sys.platform} is known to have backtrace problems.")
     print("Treating as 'SKIP'.")
     sys.exit(77)
 

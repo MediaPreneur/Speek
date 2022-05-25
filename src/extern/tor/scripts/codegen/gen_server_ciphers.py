@@ -30,25 +30,18 @@ MANDATORY = [
 def find_ciphers(filename):
     with open(filename) as f:
         for line in f:
-            m = re.search(r'(?:SSL3|TLS1)_TXT_\w+', line)
-            if m:
-                yield m.group(0)
+            if m := re.search(r'(?:SSL3|TLS1)_TXT_\w+', line):
+                yield m[0]
 
 def usable_cipher(ciph):
-    ephemeral = False
-    for e in EPHEMERAL_INDICATORS:
-        if e in ciph:
-            ephemeral = True
+    ephemeral = any(e in ciph for e in EPHEMERAL_INDICATORS)
     if not ephemeral:
         return False
 
     if "_RSA_" not in ciph:
         return False
 
-    for b in BAD_STUFF:
-        if b in ciph:
-            return False
-    return True
+    return all(b not in ciph for b in BAD_STUFF)
 
 # All fields we sort on, in order of priority.
 FIELDS = [ 'cipher', 'fwsec', 'mode',  'digest', 'bitlength' ]
@@ -85,19 +78,24 @@ class Ciphersuite(object):
 
 
 def parse_cipher(ciph):
-    m = re.match('(?:TLS1|SSL3)_TXT_(EDH|DHE|ECDHE)_RSA(?:_WITH)?_(AES|DES)_(256|128|192)(|_CBC|_CBC3|_GCM)_(SHA|SHA256|SHA384)$', ciph)
-
-    if m:
+    if m := re.match(
+        '(?:TLS1|SSL3)_TXT_(EDH|DHE|ECDHE)_RSA(?:_WITH)?_(AES|DES)_(256|128|192)(|_CBC|_CBC3|_GCM)_(SHA|SHA256|SHA384)$',
+        ciph,
+    ):
         fwsec, cipher, bits, mode, digest = m.groups()
         return Ciphersuite(ciph, fwsec, cipher, bits, mode, digest)
 
-    m = re.match('(?:TLS1|SSL3)_TXT_(EDH|DHE|ECDHE)_RSA(?:_WITH)?_(AES|DES)_(256|128|192)_CCM', ciph)
-    if m:
+    if m := re.match(
+        '(?:TLS1|SSL3)_TXT_(EDH|DHE|ECDHE)_RSA(?:_WITH)?_(AES|DES)_(256|128|192)_CCM',
+        ciph,
+    ):
         fwsec, cipher, bits = m.groups()
         return Ciphersuite(ciph, fwsec, cipher, bits, "CCM", "n/a")
 
-    m = re.match('(?:TLS1|SSL3)_TXT_(EDH|DHE|ECDHE)_RSA(?:_WITH)?_CHACHA20_POLY1305', ciph)
-    if m:
+    if m := re.match(
+        '(?:TLS1|SSL3)_TXT_(EDH|DHE|ECDHE)_RSA(?:_WITH)?_CHACHA20_POLY1305',
+        ciph,
+    ):
         fwsec, = m.groups()
         return Ciphersuite(ciph, fwsec, "CHACHA20", "256", "POLY1305", "n/a")
 
@@ -119,18 +117,14 @@ ALL_CIPHERS.sort(key=Ciphersuite.sort_key)
 indent = " "*7
 
 for c in ALL_CIPHERS:
-    if c is ALL_CIPHERS[-1]:
-        colon = ''
-    else:
-        colon = ' ":"'
-
+    colon = '' if c is ALL_CIPHERS[-1] else ' ":"'
     if c.name in MANDATORY:
-        print("%s/* Required */"%indent)
-        print('%s%s%s'%(indent,c.name,colon))
+        print(f"{indent}/* Required */")
+        print(f'{indent}{c.name}{colon}')
     else:
-        print("#ifdef %s"%c.name)
-        print('%s%s%s'%(indent,c.name,colon))
+        print(f"#ifdef {c.name}")
+        print(f'{indent}{c.name}{colon}')
         print("#endif")
 
-print('%s;'%indent)
+print(f'{indent};')
 

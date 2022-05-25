@@ -48,4 +48,4 @@ checksum = hashlib.sha3_256(data).digest()
 address = struct.pack('!32s2sb', PUBKEY, checksum, VERSION)
 onion_addr = base64.b32encode(address).decode().lower()
 
-print("%s" % (onion_addr))
+print(f"{onion_addr}")
