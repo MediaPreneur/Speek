@@ -191,7 +191,7 @@ def update_site(env):
         shutil.rmtree(os.path.join(html_dir, '.doctrees'))
         # Create symlinks for older versions.
         for link, target in {'index': 'contents', 'api': 'reference'}.items():
-            link = os.path.join(html_dir, link) + '.html'
+            link = f'{os.path.join(html_dir, link)}.html'
             target += '.html'
             if os.path.exists(os.path.join(html_dir, target)) and \
                not os.path.exists(link):
@@ -223,9 +223,9 @@ def release(args):
     import rst2md
     changes, version = rst2md.convert(changelog_path)
     cmakelists = 'CMakeLists.txt'
+    prefix = 'set(FMT_VERSION '
     for line in fileinput.input(os.path.join(fmt_repo.dir, cmakelists),
                                 inplace=True):
-        prefix = 'set(FMT_VERSION '
         if line.startswith(prefix):
             line = prefix + version + ')\n'
         sys.stdout.write(line)
@@ -233,8 +233,8 @@ def release(args):
     # Update the version in the changelog.
     title_len = 0
     for line in fileinput.input(changelog_path, inplace=True):
-        if line.decode('utf-8').startswith(version + ' - TBD'):
-            line = version + ' - ' + datetime.date.today().isoformat()
+        if line.decode('utf-8').startswith(f'{version} - TBD'):
+            line = f'{version} - {datetime.date.today().isoformat()}'
             title_len = len(line)
             line += '\n'
         elif title_len:
@@ -246,10 +246,9 @@ def release(args):
     script = os.path.join('doc', 'build.py')
     script_path = os.path.join(fmt_repo.dir, script)
     for line in fileinput.input(script_path, inplace=True):
-      m = re.match(r'( *versions = )\[(.+)\]', line)
-      if m:
-        line = '{}[{}, \'{}\']\n'.format(m.group(1), m.group(2), version)
-      sys.stdout.write(line)
+        if m := re.match(r'( *versions = )\[(.+)\]', line):
+            line = '{}[{}, \'{}\']\n'.format(m[1], m[2], version)
+        sys.stdout.write(line)
 
     fmt_repo.checkout('-B', 'release')
     fmt_repo.add(changelog, cmakelists, script)
@@ -270,16 +269,19 @@ def release(args):
                                        'target_commitish': 'release',
                                        'body': changes, 'draft': True}))
     if r.status_code != 201:
-        raise Exception('Failed to create a release ' + str(r))
+        raise Exception(f'Failed to create a release {str(r)}')
     id = r.json()['id']
     uploads_url = 'https://uploads.github.com/repos/fmtlib/fmt/releases'
-    package = 'fmt-{}.zip'.format(version)
+    package = f'fmt-{version}.zip'
     r = requests.post(
-        '{}/{}/assets?name={}'.format(uploads_url, id, package),
+        f'{uploads_url}/{id}/assets?name={package}',
         headers={'Content-Type': 'application/zip'},
-        params=params, data=open('build/fmt/' + package, 'rb'))
+        params=params,
+        data=open(f'build/fmt/{package}', 'rb'),
+    )
+
     if r.status_code != 201:
-        raise Exception('Failed to upload an asset ' + str(r))
+        raise Exception(f'Failed to upload an asset {str(r)}')
 
 
 if __name__ == '__main__':

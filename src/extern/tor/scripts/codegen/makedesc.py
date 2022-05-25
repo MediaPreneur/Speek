@@ -99,9 +99,7 @@ def rsa_sign(msg, rsa):
 
 def b64(x1):
     x = binascii.b2a_base64(x1)
-    res = []
-    for i in xrange(0, len(x), 64):
-        res.append((x[i:i+64]).decode("ascii"))
+    res = [(x[i:i+64]).decode("ascii") for i in xrange(0, len(x), 64)]
     return "\n".join(res)
 
 def bio_extract(bio):
@@ -127,10 +125,10 @@ def makeEdSigningKeyCert(sk_master, pk_master, pk_signing, date,
                          includeSigning=False, certType=1):
     assert len(pk_signing) == len(pk_master) == 32
     expiration = struct.pack(b"!L", date//3600)
-    if includeSigning:
-        extensions = b"\x01\x00\x20\x04\x00%s"%(pk_master)
-    else:
-        extensions = b"\x00"
+    extensions = (
+        b"\x01\x00\x20\x04\x00%s" % (pk_master) if includeSigning else b"\x00"
+    )
+
     signed = b"\x01%s%s\x01%s%s" % (
         bytes([certType]), expiration, pk_signing, extensions)
     signature = ed25519_exts_ref.signatureWithESK(signed, sk_master, pk_master)
@@ -259,7 +257,7 @@ class OnDemandKeys(object):
         if idx >= 0:
             self.ED_CERT
             signed_part = body[:idx+len("\nrouter-sig-ed25519 ")]
-            signed_part = "Tor router descriptor signature v1" + signed_part
+            signed_part = f"Tor router descriptor signature v1{signed_part}"
             digest = hashlib.sha256(signed_part.encode("utf-8")).digest()
             ed_sig = ed25519_exts_ref.signatureWithESK(digest,
                                       self.ed_signing_sk, self.ed_signing_pk)
@@ -297,7 +295,6 @@ def signdesc(body, args_out=None):
     fingerprint = " ".join(hexdigest[i:i+4] for i in range(0,len(hexdigest),4))
 
     MAGIC = "<<<<<<MAGIC>>>>>>"
-    MORE_MAGIC = "<<<<<!#!#!#XYZZY#!#!#!>>>>>"
     args = {
         "RSA-IDENTITY" : ident_pem,
         "ONION-KEY" : onion_pem,
@@ -308,6 +305,7 @@ def signdesc(body, args_out=None):
     if need_ed:
         args['ED25519-CERT'] = makeEdSigningKeyCert(
             sk_master, pk_master, pk_signing)
+        MORE_MAGIC = "<<<<<!#!#!#XYZZY#!#!#!>>>>>"
         args['ED25519-SIGNATURE'] = MORE_MAGIC
 
     if args_out:
@@ -334,7 +332,7 @@ def signdesc(body, args_out=None):
     return body.rstrip()
 
 def print_c_string(ident, body):
-    print("static const char %s[] =" % ident)
+    print(f"static const char {ident}[] =")
     for line in body.split("\n"):
         print('  "%s\\n"' %(line))
     print("  ;")
@@ -343,18 +341,18 @@ def emit_ri(name, body):
     info = OnDemandKeys()
     body = body.format(d=info)
     body = info.sign_desc(body)
-    print_c_string("EX_RI_%s"%name.upper(), body)
+    print_c_string(f"EX_RI_{name.upper()}", body)
 
 def emit_ei(name, body, fields):
     info = OnDemandKeys()
     body = body.format(d=info)
     body = info.sign_desc(body)
-    print_c_string("EX_EI_%s"%name.upper(), body)
+    print_c_string(f"EX_EI_{name.upper()}", body)
 
     print('ATTR_UNUSED static const char EX_EI_{NAME}_FP[] = "{d.RSA_FINGERPRINT_NOSPACE}";'.format(
         d=info, NAME=name.upper()))
     print("ATTR_UNUSED")
-    print_c_string("EX_EI_%s_KEY"%name.upper(), info.RSA_IDENTITY)
+    print_c_string(f"EX_EI_{name.upper()}_KEY", info.RSA_IDENTITY)
 
 def analyze(s):
     while s:

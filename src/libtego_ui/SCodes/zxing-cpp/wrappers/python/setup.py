@@ -17,23 +17,23 @@ class CMakeExtension(Extension):
 class CMakeBuild(build_ext):
     def build_extension(self, ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
-                      '-DPYTHON_EXECUTABLE=' + sys.executable,
-                      '-DVERSION_INFO=' + self.distribution.get_version()]
+        cmake_args = [
+            f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}',
+            f'-DPYTHON_EXECUTABLE={sys.executable}',
+            f'-DVERSION_INFO={self.distribution.get_version()}',
+        ]
+
 
         cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg,
                       '-j', '8']
 
         if platform.system() == "Windows":
-            cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
-            if sys.maxsize > 2**32:
-                cmake_args += ['-A', 'x64']
-            else:
-                cmake_args += ['-A', 'Win32']
+            cmake_args += [f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}']
+            cmake_args += ['-A', 'x64'] if sys.maxsize > 2**32 else ['-A', 'Win32']
             build_args += ['--', '/m']
         else:
-            cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
+            cmake_args += [f'-DCMAKE_BUILD_TYPE={cfg}']
 
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)

@@ -50,7 +50,7 @@ def guard_macro(src_fname):
        'src_fname'. This function takes paths relative to tor's src directory.
     """
     td = src_fname.replace(".", "_").replace("/", "_").upper()
-    return "TOR_{}".format(td)
+    return f"TOR_{td}"
 
 def makeext(fname, new_extension):
     """Replace the extension for the file called 'fname' with 'new_extension'.
@@ -59,7 +59,7 @@ def makeext(fname, new_extension):
        of path.
     """
     base = os.path.splitext(fname)[0]
-    return base + "." + new_extension
+    return f"{base}.{new_extension}"
 
 def instantiate_template(template, tor_fname):
     """
@@ -144,8 +144,7 @@ class AutomakeChunk:
         Return True if we have just read the last line in the chunk, and
         False otherwise.
         """
-        m = self.pat.match(line)
-        if m:
+        if m := self.pat.match(line):
             if self.lines:
                 raise ValueError("control line not preceded by a blank line")
             self.kind = m.group(1)
@@ -249,9 +248,8 @@ def get_include_am_location(tor_fname):
     """
     # Strip src for pattern matching, but add it back when returning the path
     src_fname = srcdir_file(tor_fname)
-    m = re.match(r'^(lib|core|feature|app)/([a-z0-9_]*)/', src_fname)
-    if m:
-        return "src/{}/{}/include.am".format(m.group(1),m.group(2))
+    if m := re.match(r'^(lib|core|feature|app)/([a-z0-9_]*)/', src_fname):
+        return f"src/{m[1]}/{m[2]}/include.am"
 
     if re.match(r'^test/', src_fname):
         return "src/test/include.am"
@@ -284,19 +282,19 @@ def run(fname):
     # And check that we're adding files to the "src" directory,
     # with canonical paths
     if tor_fname[:4] != "src/":
-        raise ValueError("Requested file path '{}' canonicalized to '{}', "
-                         "but the canonical path did not start with 'src/'. "
-                         "Please add files to the src directory."
-                         .format(fname, tor_fname))
+        raise ValueError(
+            f"Requested file path '{fname}' canonicalized to '{tor_fname}', but the canonical path did not start with 'src/'. Please add files to the src directory."
+        )
+
 
     c_tor_fname = makeext(tor_fname, "c")
     h_tor_fname = makeext(tor_fname, "h")
 
     if os.path.exists(c_tor_fname):
-        print("{} already exists".format(c_tor_fname))
+        print(f"{c_tor_fname} already exists")
         return 1
     if os.path.exists(h_tor_fname):
-        print("{} already exists".format(h_tor_fname))
+        print(f"{h_tor_fname} already exists")
         return 1
 
     with open(c_tor_fname, 'w') as f:
@@ -307,8 +305,10 @@ def run(fname):
 
     iam = get_include_am_location(c_tor_fname)
     if iam is None or not os.path.exists(iam):
-        print("Made files successfully but couldn't identify include.am for {}"
-              .format(c_tor_fname))
+        print(
+            f"Made files successfully but couldn't identify include.am for {c_tor_fname}"
+        )
+
         return 1
 
     amfile = ParsedAutomake()
@@ -323,10 +323,10 @@ def run(fname):
     amfile.add_file(c_tor_fname, "sources")
     amfile.add_file(h_tor_fname, "headers")
 
-    with open(iam+".tmp", 'w') as f:
+    with open(f"{iam}.tmp", 'w') as f:
         amfile.dump(f)
 
-    os.rename(iam+".tmp", iam)
+    os.rename(f"{iam}.tmp", iam)
 
 if __name__ == '__main__':
     import sys

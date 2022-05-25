@@ -64,7 +64,7 @@ def publickeyFromESK(h):
 
 def signatureWithESK(m,h,pk):
     a = decodeint(h[:32])
-    r = Hint(bytes([h[i] for i in range(b//8,b//4)]) + m)
+    r = Hint(bytes(h[i] for i in range(b//8,b//4)) + m)
     R = scalarmult(B,r)
     S = (r + Hint(encodepoint(R) + pk + m) * a) % l
     return encodepoint(R) + encodeint(S)

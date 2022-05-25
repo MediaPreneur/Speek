@@ -45,12 +45,12 @@ rand = hashlib.sha3_256(data)
 
 reveal = struct.pack('!Q', ts) + rand.digest()
 b64_reveal = base64.b64encode(reveal)
-print("REVEAL: %s" % (b64_reveal))
+print(f"REVEAL: {b64_reveal}")
 
 # Yes we do hash the _encoded_ reveal here that is H(REVEAL)
 hashed_reveal = hashlib.sha3_256(b64_reveal)
 commit = struct.pack('!Q', ts) + hashed_reveal.digest()
-print("COMMIT: %s" % (base64.b64encode(commit)))
+print(f"COMMIT: {base64.b64encode(commit)}")
 
 # REVEAL: AAAAAFavXpZJxbwTupvaJCTeIUCQmOPxAMblc7ChL5H2nZKuGchdaA==
 # COMMIT: AAAAAFavXpbkBMzMQG7aNoaGLFNpm2Wkk1ozXhuWWqL//GynltxVAg==

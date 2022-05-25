@@ -79,22 +79,18 @@ def split_comments(s):
         # If we found some code here, save it and advance the string.
         # Otherwise set 'code' to "".
         if m:
-            code = m.group(0)
+            code = m[0]
             s = s[m.end():]
         else:
             code = ""
 
         # Now we have a comment, or the end of the string.  Find out which
         # one, and how long it is.
-        if s.startswith("//"):
-            m = PAT_C99_COMMENT.match(s)
-        else:
-            m = PAT_C_COMMENT.match(s)
-
+        m = PAT_C99_COMMENT.match(s) if s.startswith("//") else PAT_C_COMMENT.match(s)
         # If we got a comment, save it and advance the string.  Otherwise
         # set 'comment' to "".
         if m:
-            comment = m.group(0)
+            comment = m[0]
             s = s[m.end():]
         else:
             comment = ""
@@ -121,8 +117,7 @@ class IgnoreCommentsFilt(Filter):
     def transform(self, s):
         result = []
         for code, comment in split_comments(s):
-            result.append(self._filt.transform(code))
-            result.append(comment)
+            result.extend((self._filt.transform(code), comment))
         return "".join(result)
 
 
@@ -147,7 +142,7 @@ def revise(fname, filt):
     if result == contents:
         return
 
-    tmpname = "{}_codetool_tmp".format(fname)
+    tmpname = f"{fname}_codetool_tmp"
     try:
         with open(tmpname, 'w') as f:
             f.write(result)

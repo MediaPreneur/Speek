@@ -9,8 +9,7 @@ def rmtree_if_exists(dir):
     try:
         shutil.rmtree(dir)
     except OSError as e:
-        if e.errno == errno.ENOENT:
-            pass
+        pass
 
 def makedirs_if_not_exist(dir):
     try:
@@ -22,7 +21,7 @@ def makedirs_if_not_exist(dir):
 def install_dependencies():
     branch = os.environ['TRAVIS_BRANCH']
     if branch != 'master':
-        print('Branch: ' + branch)
+        print(f'Branch: {branch}')
         exit(0) # Ignore non-master branches
     check_call('curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key ' +
                '| sudo apt-key add -', shell=True)
@@ -51,12 +50,12 @@ if build == 'Doc':
     if travis and 'KEY' not in os.environ:
         # Don't update the repo if building on Travis from an account that
         # doesn't have push access.
-        print('Skipping update of ' + repo)
+        print(f'Skipping update of {repo}')
         exit(0)
     # Clone the fmtlib.github.io repo.
     rmtree_if_exists(repo)
     git_url = 'https://github.com/' if travis else 'git@github.com:'
-    check_call(['git', 'clone', git_url + 'fmtlib/{}.git'.format(repo)])
+    check_call(['git', 'clone', git_url + f'fmtlib/{repo}.git'])
     # Copy docs to the repo.
     target_dir = os.path.join(repo, 'dev')
     rmtree_if_exists(target_dir)
@@ -86,9 +85,11 @@ test_build_dir = os.path.join(fmt_dir, "_build_test")
 # Configure the library.
 makedirs_if_not_exist(build_dir)
 cmake_flags = [
-    '-DCMAKE_INSTALL_PREFIX=' + install_dir, '-DCMAKE_BUILD_TYPE=' + build,
-    '-DCMAKE_CXX_STANDARD=' + standard
+    f'-DCMAKE_INSTALL_PREFIX={install_dir}',
+    f'-DCMAKE_BUILD_TYPE={build}',
+    f'-DCMAKE_CXX_STANDARD={standard}',
 ]
+
 
 # Make sure the fuzzers still compile.
 main_cmake_flags = list(cmake_flags)

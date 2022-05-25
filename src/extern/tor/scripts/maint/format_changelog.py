@@ -72,12 +72,8 @@ def wrapping_quality(words, divisions, width1, width2):
     lines = generate_wrapping(words, divisions)
     for line in lines:
         length = len(line)
-        if line is lines[0]:
-            width = width1
-        else:
-            width = width2
-
-        if line[0:1] == '(':
+        width = width1 if line is lines[0] else width2
+        if line[:1] == '(':
             total += OPENPAREN_PENALTY
 
         if length > width:
@@ -119,9 +115,7 @@ def wrap_graf(words, prefix_len1=0, prefix_len2=0, width=72):
                 best_score = wq2
         wrapping_after.append( best_so_far )
 
-    lines = generate_wrapping(words, wrapping_after[-1])
-
-    return lines
+    return generate_wrapping(words, wrapping_after[-1])
 
 def hyphenatable(word):
     if "--" in word:
@@ -142,7 +136,7 @@ def split_paragraph(s):
         if hyphenatable(word):
             while "-" in word:
                 a,word = word.split("-",1)
-                r.append(a+"\xff")
+                r.append(f"{a}ÿ")
         r.append(word)
     return r
 
@@ -153,8 +147,7 @@ def fill(text, width, initial_indent, subsequent_indent):
     res = [ initial_indent, lines[0], "\n" ]
     for line in lines[1:]:
         res.append(subsequent_indent)
-        res.append(line)
-        res.append("\n")
+        res.extend((line, "\n"))
     return "".join(res)
 
 # ==============================
@@ -205,7 +198,7 @@ def head_score(s):
     if not m:
         print("Can't score %r"%s, file=sys.stderr)
         return 99999
-    lw = m.group(1).lower()
+    lw = m[1].lower()
     if lw.startswith("security") and "feature" not in lw:
         score = -300
     elif lw.startswith("deprecated version"):
@@ -296,7 +289,7 @@ class ChangeLog(object):
     def lint_head(self, line, head):
         m = re.match(r'^ *o ([^\(]+)((?:\([^\)]+\))?):', head)
         if not m:
-            print("Weird header format on line %s"%line, file=sys.stderr)
+            print(f"Weird header format on line {line}", file=sys.stderr)
 
     def lint_item(self, line, grafs, head_type):
         pass
@@ -395,7 +388,7 @@ class ChangeLog(object):
         for _,head,items in self.sections:
             if not head.endswith(':'):
                 print("adding : to %r"%head, file=sys.stderr)
-                head = head + ":"
+                head = f"{head}:"
             self.dumpSectionHeader(head)
             for _,grafs in items:
                 self.dumpItem(grafs)
@@ -426,10 +419,9 @@ def bug_html(m):
     except KeyError:
         print("Can't figure out URL for {}{}".formt(prefix,bugno),
               file=sys.stderr)
-        return "{} {}{}".format(kind, prefix, bugno)
+        return f"{kind} {prefix}{bugno}"
 
-    return "{} <a href='https://bugs.torproject.org/{}/{}'>{}{}</a>".format(
-        kind, url_prefix, bugno, disp_prefix, bugno)
+    return f"{kind} <a href='https://bugs.torproject.org/{url_prefix}/{bugno}'>{disp_prefix}{bugno}</a>"
 
 class HTMLChangeLog(ChangeLog):
     def __init__(self, *args, **kwargs):
@@ -454,7 +446,7 @@ class HTMLChangeLog(ChangeLog):
         self.htmlPar(graf)
 
     def dumpMainhead(self, head):
-        sys.stdout.write("<h2>%s</h2>"%head)
+        sys.stdout.write(f"<h2>{head}</h2>")
 
     def dumpHeadGraf(self, graf):
         self.htmlPar(graf)
@@ -546,11 +538,7 @@ if fname != '-':
 
 nextline = None
 
-if options.html:
-    ChangeLogClass = HTMLChangeLog
-else:
-    ChangeLogClass = ChangeLog
-
+ChangeLogClass = HTMLChangeLog if options.html else ChangeLog
 CL = ChangeLogClass(wrapText=options.wrapText,
                     blogOrder=options.blogOrder,
                     drupalBreak=options.drupalBreak)
@@ -571,7 +559,7 @@ for line in sys.stdin:
 CL.lint()
 
 if options.output != '-':
-    fname_new = options.output+".new"
+    fname_new = f"{options.output}.new"
     fname_out = options.output
     sys.stdout = open(fname_new, 'w')
 else:

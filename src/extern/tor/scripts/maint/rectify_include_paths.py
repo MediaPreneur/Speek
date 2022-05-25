@@ -37,7 +37,7 @@ def get_include_map():
 
             if fname.endswith(".h"):
                 if fname in includes:
-                    warn("Multiple headers named %s"%fname)
+                    warn(f"Multiple headers named {fname}")
                     includes[fname] = DUPLICATE
                     continue
                 include = os.path.join(dirpath, fname)
@@ -53,8 +53,7 @@ def get_base_header_name(hdr):
 
 def fix_includes(inp, out, mapping):
     for line in inp:
-        m = INCLUDE_PAT.match(line)
-        if m:
+        if m := INCLUDE_PAT.match(line):
             include,hdr,rest = m.groups()
             basehdr = get_base_header_name(hdr)
             if basehdr in mapping and mapping[basehdr] is not DUPLICATE:
@@ -77,10 +76,9 @@ for dirpath,dirnames,fnames in os.walk("src"):
 
         if fname.endswith(".c") or fname.endswith(".h"):
             fname = os.path.join(dirpath, fname)
-            tmpfile = fname+".tmp"
-            f_in = open(fname, 'r')
-            f_out = open(tmpfile, 'w')
-            fix_includes(f_in, f_out, incs)
-            f_in.close()
+            tmpfile = f"{fname}.tmp"
+            with open(fname, 'r') as f_in:
+                f_out = open(tmpfile, 'w')
+                fix_includes(f_in, f_out, incs)
             f_out.close()
             os.rename(tmpfile, fname)

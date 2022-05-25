@@ -22,8 +22,7 @@ warning_pattern = re.compile(r'^([^:]+):(\d+): warning: (.*) is not documented')
 def readDoxygenOutput(f):
     " yields (cfilename, lineno, thingname) "
     for line in f:
-        m = warning_pattern.match(line)
-        if m:
+        if m := warning_pattern.match(line):
             yield m.groups()
 
 warnings = {}
@@ -59,7 +58,7 @@ def annotate(filename):
         ind = getIndentation(lines[lineno])
         lines.insert(lineno, "%s/* DOCDOC %s */\n"%(ind,what))
 
-    shutil.copy(filename, filename+".orig")
+    shutil.copy(filename, f"{filename}.orig")
     with open(filename, 'w') as f:
         for l in lines:
             f.write(l)

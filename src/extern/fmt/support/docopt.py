@@ -85,8 +85,7 @@ def transform(pattern):
             child = [c for c in children if type(c) in parents][0]
             children.remove(child)
             if type(child) is Either:
-                for c in child.children:
-                    groups.append([c] + children)
+                groups.extend([c] + children for c in child.children)
             elif type(child) is OneOrMore:
                 groups.append(child.children * 2 + children)
             else:
@@ -138,28 +137,31 @@ class BranchPattern(Pattern):
         self.children = list(children)
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__,
-                           ', '.join(repr(a) for a in self.children))
+        return f"{self.__class__.__name__}({', '.join((repr(a) for a in self.children))})"
 
     def flat(self, *types):
         if type(self) in types:
             return [self]
-        return sum([child.flat(*types) for child in self.children], [])
+        return sum((child.flat(*types) for child in self.children), [])
 
 
 class Argument(LeafPattern):
 
     def single_match(self, left):
-        for n, pattern in enumerate(left):
-            if type(pattern) is Argument:
-                return n, Argument(self.name, pattern.value)
-        return None, None
+        return next(
+            (
+                (n, Argument(self.name, pattern.value))
+                for n, pattern in enumerate(left)
+                if type(pattern) is Argument
+            ),
+            (None, None),
+        )
 
     @classmethod
-    def parse(class_, source):
+    def parse(cls, source):
         name = re.findall('(<\S*?>)', source)[0]
         value = re.findall('\[default: (.*)\]', source, flags=re.I)
-        return class_(name, value[0] if value else None)
+        return cls(name, value[0] if value else None)
 
 
 class Command(Argument):
@@ -185,7 +187,7 @@ class Option(LeafPattern):
         self.value = None if value is False and argcount else value
 
     @classmethod
-    def parse(class_, option_description):
+    def parse(cls, option_description):
         short, long, argcount, value = None, None, 0, False
         options, _, description = option_description.strip().partition('  ')
         options = options.replace(',', ' ').replace('=', ' ')
@@ -199,13 +201,17 @@ class Option(LeafPattern):
         if argcount:
             matched = re.findall('\[default: (.*)\]', description, flags=re.I)
             value = matched[0] if matched else None
-        return class_(short, long, argcount, value)
+        return cls(short, long, argcount, value)
 
     def single_match(self, left):
-        for n, pattern in enumerate(left):
-            if self.name == pattern.name:
-                return n, pattern
-        return None, None
+        return next(
+            (
+                (n, pattern)
+                for n, pattern in enumerate(left)
+                if self.name == pattern.name
+            ),
+            (None, None),
+        )
 
     @property
     def name(self):
@@ -304,12 +310,14 @@ def parse_long(tokens, options):
     assert long.startswith('--')
     value = None if eq == value == '' else value
     similar = [o for o in options if o.long == long]
-    if tokens.error is DocoptExit and similar == []:  # if no exact match
+    if tokens.error is DocoptExit and not similar:  # if no exact match
         similar = [o for o in options if o.long and o.long.startswith(long)]
     if len(similar) > 1:  # might be simply specified ambiguously 2+ times?
-        raise tokens.error('%s is not a unique prefix: %s?' %
-                           (long, ', '.join(o.long for o in similar)))
-    elif len(similar) < 1:
+        raise tokens.error(
+            f"{long} is not a unique prefix: {', '.join((o.long for o in similar))}?"
+        )
+
+    elif not similar:
         argcount = 1 if eq == '=' else 0
         o = Option(None, long, argcount)
         options.append(o)
@@ -320,11 +328,11 @@ def parse_long(tokens, options):
                    similar[0].argcount, similar[0].value)
         if o.argcount == 0:
             if value is not None:
-                raise tokens.error('%s must not have an argument' % o.long)
-        else:
-            if value is None:
-                if tokens.current() in [None, '--']:
-                    raise tokens.error('%s requires argument' % o.long)
+                raise tokens.error(f'{o.long} must not have an argument')
+        elif value is None:
+            if tokens.current() in [None, '--']:
+                raise tokens.error(f'{o.long} requires argument')
+            else:
                 value = tokens.move()
         if tokens.error is DocoptExit:
             o.value = value if value is not None else True
@@ -338,12 +346,12 @@ def parse_shorts(tokens, options):
     left = token.lstrip('-')
     parsed = []
     while left != '':
-        short, left = '-' + left[0], left[1:]
+        short, left = f'-{left[0]}', left[1:]
         similar = [o for o in options if o.short == short]
         if len(similar) > 1:
             raise tokens.error('%s is specified ambiguously %d times' %
                                (short, len(similar)))
-        elif len(similar) < 1:
+        elif not similar:
             o = Option(short, None, 0)
             options.append(o)
             if tokens.error is DocoptExit:
@@ -355,7 +363,7 @@ def parse_shorts(tokens, options):
             if o.argcount != 0:
                 if left == '':
                     if tokens.current() in [None, '--']:
-                        raise tokens.error('%s requires argument' % short)
+                        raise tokens.error(f'{short} requires argument')
                     value = tokens.move()
                 else:
                     value = left

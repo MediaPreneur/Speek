@@ -14,7 +14,9 @@ class fp:
     pass
 
 powers = []
-for i, exp in enumerate(range(min_exponent, max_exponent + 1, step)):
+# Sanity check.
+exp_offset10 = 400
+for exp in range(min_exponent, max_exponent + 1, step):
     result = fp()
     n = 10 ** exp if exp >= 0 else 2 ** exp_offset / 10 ** -exp
     k = significand_size + 1
@@ -23,16 +25,14 @@ for i, exp in enumerate(range(min_exponent, max_exponent + 1, step)):
     result.f = (int('{:0<{}}'.format(binary[:k], k), 2) + 1) / 2
     result.e = len(binary) - (exp_offset if exp < 0 else 0) - significand_size
     powers.append(result)
-    # Sanity check.
-    exp_offset10 = 400
     actual = result.f * 10 ** exp_offset10
     if result.e > 0:
         actual *= 2 ** result.e
     else:
-        for j in range(-result.e):
+        for _ in range(-result.e):
             actual /= 2
     expected = 10 ** (exp_offset10 + exp)
-    precision = len('{}'.format(expected)) - len('{}'.format(actual - expected))
+    precision = len(f'{expected}') - len(f'{actual - expected}')
     if precision < 19:
         print('low precision:', precision)
         exit(1)

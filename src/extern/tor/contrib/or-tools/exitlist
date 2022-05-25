@@ -110,17 +110,10 @@ class Pattern:
         self.portMax = portMax
 
     def __str__(self):
-        return "%s/%s:%s-%s"%(socket.inet_ntoa(self.ip),
-                              socket.inet_ntoa(self.mask),
-                              self.portMin,
-                              self.portMax)
+        return f"{socket.inet_ntoa(self.ip)}/{socket.inet_ntoa(self.mask)}:{self.portMin}-{self.portMax}"
 
-    def parse(s):
-        if ":" in s:
-            addrspec, portspec = s.split(":",1)
-        else:
-            addrspec, portspec = s, "*"
-
+    def parse(self):
+        addrspec, portspec = self.split(":", 1) if ":" in self else (self, "*")
         if addrspec == '*':
             ip,mask = "\x00\x00\x00\x00","\x00\x00\x00\x00"
         elif '/' not in addrspec:
@@ -129,11 +122,7 @@ class Pattern:
         else:
             ip,mask = addrspec.split("/",1)
             ip = socket.inet_aton(ip)
-            if "." in mask:
-                mask = socket.inet_aton(mask)
-            else:
-                mask = maskByBits(int(mask))
-
+            mask = socket.inet_aton(mask) if "." in mask else maskByBits(int(mask))
         if portspec == '*':
             portMin = 1
             portMax = 65535
@@ -172,9 +161,9 @@ class Policy:
     def __init__(self, lst):
         self.lst = lst
 
-    def parseLines(lines):
+    def parseLines(self):
         r = []
-        for item in lines:
+        for item in self:
             a,p=item.split(" ",1)
             if a == 'accept':
                 a = True
@@ -191,15 +180,19 @@ class Policy:
     def __str__(self):
         r = []
         for pat, accept in self.lst:
-            rule = accept and "accept" or "reject"
+            rule = "accept" if accept else "reject"
             r.append("%s %s\n"%(rule,pat))
         return "".join(r)
 
     def accepts(self, ip, port):
-        for pattern,accept in self.lst:
-            if pattern.appliesTo(ip,port):
-                return accept
-        return True
+        return next(
+            (
+                accept
+                for pattern, accept in self.lst
+                if pattern.appliesTo(ip, port)
+            ),
+            True,
+        )
 
 class Server:
     def __init__(self, name, ip, policy, published, fingerprint):
@@ -210,8 +203,7 @@ class Server:
         self.fingerprint = fingerprint
 
 def uniq_sort(lst):
-    d = {}
-    for item in lst: d[item] = 1
+    d = {item: 1 for item in lst}
     lst = d.keys()
     lst.sort()
     return lst

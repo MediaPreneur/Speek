@@ -180,15 +180,13 @@ def commented_line(fmt, argument, maxwidth=LINE_WIDTH):
     """
     assert fmt.endswith("\n")
     result = fmt % argument
-    if len(result) <= maxwidth:
-        return result
-    else:
+    if len(result) > maxwidth:
         # How long can we let the argument be?  Try filling in the
         # format with an empty argument to find out.
         max_arg_width = maxwidth - len(fmt % "")
         result = fmt % truncate_expression(argument, max_arg_width)
         assert len(result) <= maxwidth
-        return result
+    return result
 
 def negate(expr):
     """Return a negated version of expr; try to avoid double-negation.
@@ -213,22 +211,15 @@ def negate(expr):
 
     """
     expr = expr.strip()
-    # See whether we match !(...), with no intervening close-parens.
-    m = re.match(r'^!\s*\(([^\)]*)\)$', expr)
-    if m:
-        return m.group(1)
+    if m := re.match(r'^!\s*\(([^\)]*)\)$', expr):
+        return m[1]
 
 
-    # See whether we match !?defined(...), with no intervening close-parens.
-    m = re.match(r'^(!?)\s*(defined\([^\)]*\))$', expr)
-    if m:
-        if m.group(1) == "!":
-            prefix = ""
-        else:
-            prefix = "!"
-        return prefix + m.group(2)
+    if m := re.match(r'^(!?)\s*(defined\([^\)]*\))$', expr):
+        prefix = "" if m[1] == "!" else "!"
+        return prefix + m[2]
 
-    return "!(%s)" % expr
+    return f"!({expr})"
 
 def uncomment(s):
     """
@@ -265,11 +256,11 @@ def translate(f_in, f_out):
         if command in ("if", "ifdef", "ifndef"):
             # The #if directive pushes us one level lower on the stack.
             if command == 'ifdef':
-                rest = "defined(%s)"%uncomment(rest)
+                rest = f"defined({uncomment(rest)})"
             elif command == 'ifndef':
-                rest = "!defined(%s)"%uncomment(rest)
+                rest = f"!defined({uncomment(rest)})"
             elif rest.endswith("\\"):
-                rest = rest[:-1]+"..."
+                rest = f"{rest[:-1]}..."
 
             rest = uncomment(rest)
 
@@ -292,8 +283,8 @@ def translate(f_in, f_out):
         else:
             # We pop one element on the stack, and comment an endif.
             assert command == 'endif'
-            if len(stack) == 0:
-                raise Problem("Unmatched #%s on %s"% (command,lineno))
+            if not stack:
+                raise Problem(f"Unmatched #{command} on {lineno}")
             if lineno <= cur_level[0][2] + LINE_OBVIOUSNESS_LIMIT:
                 f_out.write(line)
             elif len(cur_level) == 1 or (
@@ -317,6 +308,6 @@ if __name__ == '__main__':
         sys.exit(0)
 
     for fn in sys.argv[1:]:
-        with open(fn+"_OUT", 'w') as output_file:
+        with open(f"{fn}_OUT", 'w') as output_file:
             translate(open(fn, 'r'), output_file)
-        os.rename(fn+"_OUT", fn)
+        os.rename(f"{fn}_OUT", fn)

@@ -47,8 +47,9 @@ class Reader(object):
         # Append newlines because difflib works better with them
         a = [s + '\n' for s in self.d[key]]
         b = sorted(a, key=str.lower)
-        return difflib.unified_diff(a, b, fromfile=key+' unsorted',
-                                    tofile=key+' sorted')
+        return difflib.unified_diff(
+            a, b, fromfile=f'{key} unsorted', tofile=f'{key} sorted'
+        )
 
 def main():
     """Diff unsorted and sorted lists of option names in a manpage

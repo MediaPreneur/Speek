@@ -71,6 +71,6 @@ srv_msg = invariant_token + \
 
 # Now calculate the HMAC
 srv = hashlib.sha3_256(srv_msg)
-print("%s" % srv.hexdigest().upper())
+print(f"{srv.hexdigest().upper()}")
 
 # 2A9B1D6237DAB312A40F575DA85C147663E7ED3F80E9555395F15B515C74253D 

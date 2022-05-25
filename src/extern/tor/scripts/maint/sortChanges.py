@@ -49,9 +49,9 @@ def score(s,fname=None):
     m = re.match(r'^ +o ([^\n]*)\n(.*)', s, re.M|re.S)
     if not m:
         print("Can't score %r from %s"%(s,fname), file=sys.stderr)
-    heading = m.group(1)
+    heading = m[1]
     heading = REPLACEMENTS.get(heading, heading)
-    lw = m.group(1).lower()
+    lw = m[1].lower()
     if lw.startswith("major feature"):
         score = 0
     elif lw.startswith("major bug"):
@@ -67,7 +67,7 @@ def score(s,fname=None):
     else:
         score = 100
 
-    return (score, lw, heading, m.group(2))
+    return score, lw, heading, m[2]
 
 def splitChanges(s):
     this_entry = []
@@ -97,17 +97,13 @@ changes = []
 for fn in sys.argv[1:]:
     if fn.endswith('~'):
         continue
-    for change in splitChanges(fetch(fn)):
-        changes.append(score(change,fn))
-
+    changes.extend(score(change,fn) for change in splitChanges(fetch(fn)))
 changes.sort()
 
 last_lw = "this is not a header"
 for _, lw, header, rest in changes:
-    if lw == last_lw:
-        print(rest, end="")
-    else:
+    if lw != last_lw:
         print()
         print("  o",header)
-        print(rest, end="")
         last_lw = lw
+    print(rest, end="")

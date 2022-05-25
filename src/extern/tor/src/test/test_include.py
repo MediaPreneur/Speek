@@ -22,7 +22,7 @@ def fail(msg):
     sys.exit(msg)
 
 def skip(msg):
-    logging.warning('SKIP: {}'.format(msg))
+    logging.warning(f'SKIP: {msg}')
     sys.exit(77)
 
 def wait_for_log(s):
@@ -31,22 +31,22 @@ def wait_for_log(s):
         l = tor_process.stdout.readline()
         l = l.decode('utf8', 'backslashreplace')
         if s in l:
-            logging.info('Tor logged: "{}"'.format(l.strip()))
+            logging.info(f'Tor logged: "{l.strip()}"')
             return
         # readline() returns a blank string when there is no output
         # avoid busy-waiting
         if len(l) == 0:
-            logging.debug('Tor has not logged anything, waiting for "{}"'.format(s))
+            logging.debug(f'Tor has not logged anything, waiting for "{s}"')
             time.sleep(LOG_WAIT)
         else:
-            logging.info('Tor logged: "{}", waiting for "{}"'.format(l.strip(), s))
-    fail('Could not find "{}" in logs after {} seconds'.format(s, LOG_TIMEOUT))
+            logging.info(f'Tor logged: "{l.strip()}", waiting for "{s}"')
+    fail(f'Could not find "{s}" in logs after {LOG_TIMEOUT} seconds')
 
 def pick_random_port():
     port = 0
     random.seed()
 
-    for i in range(8):
+    for _ in range(8):
         port = random.randint(10000, 60000)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if s.connect_ex(('127.0.0.1', port)) == 0:
@@ -66,12 +66,17 @@ def check_control_list(control_out_file, expected, value_name):
         received_count += 1
         parts = re.split('[ =-]', received.strip())
         if len(parts) != 3 or parts[0] != '250' or parts[1] != value_name or parts[2] != e:
-            fail('Unexpected value in response line "{}". Expected {} for value {}'.format(received, e, value_name))
+            fail(
+                f'Unexpected value in response line "{received}". Expected {e} for value {value_name}'
+            )
+
         if received.startswith('250 '):
             break
 
     if received_count != len(expected):
-        fail('Expected response with {} lines but received {} lines'.format(len(expected), received_count))
+        fail(
+            f'Expected response with {len(expected)} lines but received {received_count} lines'
+        )
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -92,14 +97,14 @@ control_port = pick_random_port()
 assert control_port != 0
 
 if len(sys.argv) < 4:
-     fail('Usage: %s <path-to-tor> <data-dir> <torrc>' % sys.argv[0])
+    fail(f'Usage: {sys.argv[0]} <path-to-tor> <data-dir> <torrc>')
 
 if not os.path.exists(sys.argv[1]):
-    fail('ERROR: cannot find tor at %s' % sys.argv[1])
+    fail(f'ERROR: cannot find tor at {sys.argv[1]}')
 if not os.path.exists(sys.argv[2]):
-    fail('ERROR: cannot find datadir at %s' % sys.argv[2])
+    fail(f'ERROR: cannot find datadir at {sys.argv[2]}')
 if not os.path.exists(sys.argv[3]):
-    fail('ERROR: cannot find torrcdir at %s' % sys.argv[3])
+    fail(f'ERROR: cannot find torrcdir at {sys.argv[3]}')
 
 tor_path = sys.argv[1]
 data_dir = sys.argv[2]
@@ -111,20 +116,32 @@ empty_defaults_torrc_path = os.path.join(data_dir, 'empty_defaults_torrc')
 open(empty_defaults_torrc_path, 'w').close()
 torrc = os.path.join(torrc_dir, 'torrc')
 
-tor_process = subprocess.Popen([tor_path,
-                               '-DataDirectory', data_dir,
-                               '-ControlPort', '127.0.0.1:{}'.format(control_port),
-                               '-Log', 'info stdout',
-                               '-LogTimeGranularity', '1',
-                               '-FetchServerDescriptors', '0',
-                               '-DisableNetwork', '1',
-                               '-f', torrc,
-                               '--defaults-torrc', empty_defaults_torrc_path,
-                               ],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+tor_process = subprocess.Popen(
+    [
+        tor_path,
+        '-DataDirectory',
+        data_dir,
+        '-ControlPort',
+        f'127.0.0.1:{control_port}',
+        '-Log',
+        'info stdout',
+        '-LogTimeGranularity',
+        '1',
+        '-FetchServerDescriptors',
+        '0',
+        '-DisableNetwork',
+        '1',
+        '-f',
+        torrc,
+        '--defaults-torrc',
+        empty_defaults_torrc_path,
+    ],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+)
 
-if tor_process == None:
+
+if tor_process is None:
     fail('ERROR: running tor failed')
 
 wait_for_log('Opened Control listener')
@@ -140,7 +157,7 @@ control_socket.sendall('AUTHENTICATE \r\n'.encode('ascii'))
 res = control_out_file.readline().strip()
 if res != '250 OK':
     tor_process.terminate()
-    fail('Cannot authenticate. Response was: {}'.format(res))
+    fail(f'Cannot authenticate. Response was: {res}')
 
 # test configuration file values and order
 control_socket.sendall('GETCONF NodeFamily\r\n'.encode('ascii'))
@@ -156,7 +173,7 @@ wait_for_log('Reloading config and resetting internal state.')
 res = control_out_file.readline().strip()
 if res != '250 OK':
     tor_process.terminate()
-    fail('Cannot reload configuration. Response was: {}'.format(res))
+    fail(f'Cannot reload configuration. Response was: {res}')
 
 
 control_socket.sendall('GETCONF NodeFamily\r\n'.encode('ascii'))
@@ -167,19 +184,19 @@ control_socket.sendall('getinfo config-can-saveconf\r\n'.encode('ascii'))
 res = control_out_file.readline().strip()
 if res != '250-config-can-saveconf=0':
     tor_process.terminate()
-    fail('getinfo config-can-saveconf returned wrong response: {}'.format(res))
+    fail(f'getinfo config-can-saveconf returned wrong response: {res}')
 else:
     res = control_out_file.readline().strip()
     if res != '250 OK':
         tor_process.terminate()
-        fail('getinfo failed. Response was: {}'.format(res))
+        fail(f'getinfo failed. Response was: {res}')
 
 # test that saveconf returns error because we have a %include
 control_socket.sendall('SAVECONF\r\n'.encode('ascii'))
 res = control_out_file.readline().strip()
 if res != '551 Unable to write configuration to disk.':
     tor_process.terminate()
-    fail('SAVECONF returned wrong response. Response was: {}'.format(res))
+    fail(f'SAVECONF returned wrong response. Response was: {res}')
 
 control_socket.sendall('SIGNAL HALT\r\n'.encode('ascii'))
 

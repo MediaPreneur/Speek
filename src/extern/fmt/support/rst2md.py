@@ -33,7 +33,7 @@ class Translator(nodes.NodeVisitor):
         raise nodes.StopTraversal
 
     def visit_title(self, node):
-        self.version = re.match(r'(\d+\.\d+\.\d+).*', node.children[0]).group(1)
+        self.version = re.match(r'(\d+\.\d+\.\d+).*', node.children[0])[1]
         raise nodes.SkipChildren
 
     def visit_title_reference(self, node):
